@@ -20,6 +20,19 @@ class TestClusterClientReplicas < Minitest::Test
     end
   end
 
+  def test_client_can_read_with_disconnected_replica
+    redirected_node = mock
+    redirected_node.stubs(:call).returns(false)
+
+    r = build_another_client(replica: true)
+    r._client.stubs(:assign_redirection_node).returns(redirected_node)
+
+    r.set('{key}1', 100)
+    r.disconnect!
+
+    assert_equal '100', r.get('{key}1')
+  end
+
   def test_client_can_flush_with_replica
     r = build_another_client(replica: true)
 
