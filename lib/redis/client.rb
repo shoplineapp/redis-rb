@@ -347,6 +347,11 @@ class Redis
       @options[:port] = Integer(server[:port]) if server.include?(:port)
 
       @connection = @options[:driver].connect(@options)
+
+      # ensure everytime a connection is established/reconnected
+      # the readonly call would be triggered to avoid MOVED response
+      call(%i[readonly]) if @options[:role] == 'slave'
+
       @pending_reads = 0
     rescue TimeoutError,
            SocketError,

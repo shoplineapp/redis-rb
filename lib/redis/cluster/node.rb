@@ -74,7 +74,9 @@ class Redis
         clients = options.map do |node_key, option|
           next if replica_disabled? && slave?(node_key)
 
-          client = Client.new(option)
+          client_option = option.dup
+          client_option[:role] = ROLE_SLAVE if slave?(node_key)
+          client = Client.new(client_option)
           client.call(%i[readonly]) if slave?(node_key)
           [node_key, client]
         end
