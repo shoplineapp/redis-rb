@@ -80,6 +80,8 @@ class Redis
     attr_reader :command_map
 
     def initialize(options = {})
+      options = options.dup
+      @is_replica = options.delete(:is_replica)
       @options = _parse_options(options)
       @reconnect = true
       @logger = @options[:logger]
@@ -107,6 +109,10 @@ class Redis
         call [:auth, password] if password
         call [:select, db] if db != 0
         call [:client, :setname, @options[:id]] if @options[:id]
+        # ensure everytime a connection is established/reconnected
+        # the readonly call would be triggered to avoid MOVED response
+        call [:readonly] if @is_replica
+
         @connector.check(self)
       end
 
@@ -347,11 +353,6 @@ class Redis
       @options[:port] = Integer(server[:port]) if server.include?(:port)
 
       @connection = @options[:driver].connect(@options)
-
-      # ensure everytime a connection is established/reconnected
-      # the readonly call would be triggered to avoid MOVED response
-      call(%i[readonly]) if @options[:role] == 'slave'
-
       @pending_reads = 0
     rescue TimeoutError,
            SocketError,
